@@ -1,0 +1,94 @@
+name: PHP OOP - Latihan per Pertemuan
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  run-pertemuan:
+    runs-on: ubuntu-latest
+    env:
+      BASE_DIR: php-oop-multifile   # <- folder root dari ZIP Bapak
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dir: Pertemuan01
+            entry: HelloWorld.php
+          - dir: Pertemuan02
+            entry: Main.php
+          - dir: Pertemuan03
+            entry: Main.php
+          - dir: Pertemuan04
+            entry: Main.php
+          - dir: Pertemuan05
+            entry: Main.php
+          - dir: Pertemuan06
+            entry: Main.php
+          - dir: Pertemuan07
+            entry: Main.php
+          - dir: Pertemuan08
+            skip: true
+          - dir: Pertemuan09
+            entry: Main.php
+          - dir: Pertemuan10
+            entry: Main.php
+          - dir: Pertemuan11
+            entry: Main.php
+          - dir: Pertemuan12
+            entry: Main.php
+          - dir: Pertemuan13
+            entry: Main.php
+          - dir: Pertemuan14
+            entry: Main.php
+          - dir: Pertemuan15
+            entry: Main.php
+          - dir: Pertemuan16
+            entry: App.php
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          ini-values: |
+            memory_limit=512M
+            error_reporting=E_ALL
+            display_errors=On
+
+      - name: Skip marker
+        if: matrix.skip == 'true'
+        run: echo "Skipping ${{ matrix.dir }} (no PHP files)"
+
+      - name: List folder (debug)
+        if: matrix.skip != 'true'
+        run: ls -la "${{ env.BASE_DIR }}/${{ matrix.dir }}"
+
+      - name: Run ${{ matrix.dir }} -> ${{ matrix.entry }}
+        if: matrix.skip != 'true'
+        shell: bash
+        run: |
+          set -e
+          cd "${BASE_DIR}/${{ matrix.dir }}"
+          if [ -f "${{ matrix.entry }}" ]; then
+            # Jika suatu pertemuan butuh input, bisa tambahkan:
+            # printf "input1\ninput2\n" | php "${{ matrix.entry }}"
+            php "${{ matrix.entry }}"
+          else
+            echo "Entry '${{ matrix.entry }}' tidak ditemukan di ${{ matrix.dir }}"
+            exit 1
+          fi
+
+      - name: Upload output (opsional)
+        if: always() && matrix.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-${{ matrix.dir }}
+          path: |
+            ${{ env.BASE_DIR }}/${{ matrix.dir }}/output*.txt
+          if-no-files-found: ignore
