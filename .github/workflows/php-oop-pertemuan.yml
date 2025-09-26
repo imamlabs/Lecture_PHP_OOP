@@ -28,7 +28,7 @@ jobs:
           - dir: Pertemuan07
             entry: Main.php
           - dir: Pertemuan08
-            skip: true
+            skip: true            # ← boolean, bukan string
           - dir: Pertemuan09
             entry: Main.php
           - dir: Pertemuan10
@@ -37,10 +37,6 @@ jobs:
             entry: Main.php
           - dir: Pertemuan12
             entry: Main.php
-            # Input otomatis untuk menu:
-            # 1 (tambah) → NIM → Nama
-            # 1 (tambah) → NIM → Nama
-            # 3 (tampil), lalu 0 (keluar)
             input: "1\n2310001\nAri\n1\n2310002\nNina\n3\n0\n"
           - dir: Pertemuan13
             entry: Main.php
@@ -76,11 +72,11 @@ jobs:
           echo "Using BASE_DIR=$BD"
 
       - name: Skip marker
-        if: matrix.skip == 'true'
+        if: ${{ matrix.skip || false }}
         run: echo "Skipping ${{ matrix.dir }} (no PHP files)"
 
       - name: List folder (debug)
-        if: matrix.skip != 'true'
+        if: ${{ !(matrix.skip || false) }}
         run: |
           echo "Workspace root:"
           ls -la
@@ -88,7 +84,7 @@ jobs:
           ls -la "${{ steps.basedir.outputs.value }}/${{ matrix.dir }}" || true
 
       - name: Run ${{ matrix.dir }} -> ${{ matrix.entry }} (with optional input)
-        if: matrix.skip != 'true'
+        if: ${{ !(matrix.skip || false) }}
         shell: bash
         run: |
           set -e
@@ -100,13 +96,12 @@ jobs:
             exit 2
           fi
           cd "$RUN_DIR"
-          if [ ! -f "$ENTRY" ]; then
+          if [ -n "$ENTRY" ] && [ ! -f "$ENTRY" ]; then
             echo "Entry file tidak ditemukan: $RUN_DIR/$ENTRY"
             ls -la
             exit 3
           fi
 
-          # Jika matrix.input terisi, kirim ke STDIN; kalau tidak, jalankan biasa
           if [ -n "${{ matrix.input }}" ]; then
             printf "%b" "${{ matrix.input }}" | php "$ENTRY"
           else
@@ -114,7 +109,7 @@ jobs:
           fi
 
       - name: Upload output (opsional)
-        if: always() && matrix.skip != 'true'
+        if: ${{ always() && !(matrix.skip || false) }}
         uses: actions/upload-artifact@v4
         with:
           name: output-${{ matrix.dir }}
