@@ -2,15 +2,13 @@ name: PHP OOP - Latihan per Pertemuan
 
 on:
   push:
-    branches: [ "**" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "**" ]
+    branches: [ "main" ]
 
 jobs:
   run-pertemuan:
     runs-on: ubuntu-latest
-    env:
-      BASE_DIR: php-oop-multifile   # <- folder root dari ZIP Bapak
     strategy:
       fail-fast: false
       matrix:
@@ -61,28 +59,47 @@ jobs:
             error_reporting=E_ALL
             display_errors=On
 
+      - name: Resolve base dir
+        id: basedir
+        run: |
+          if [ -d "php-oop-multifile" ]; then
+            echo "value=php-oop-multifile" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=." >> "$GITHUB_OUTPUT"
+          fi
+          echo "Using BASE_DIR=$(cat $GITHUB_OUTPUT | sed -n 's/value=//p')"
+
       - name: Skip marker
         if: matrix.skip == 'true'
         run: echo "Skipping ${{ matrix.dir }} (no PHP files)"
 
       - name: List folder (debug)
         if: matrix.skip != 'true'
-        run: ls -la "${{ env.BASE_DIR }}/${{ matrix.dir }}"
+        run: |
+          echo "Workspace:"
+          ls -la
+          echo "Trying ${{ steps.basedir.outputs.value }}/${{ matrix.dir }}:"
+          ls -la "${{ steps.basedir.outputs.value }}/${{ matrix.dir }}" || true
 
       - name: Run ${{ matrix.dir }} -> ${{ matrix.entry }}
         if: matrix.skip != 'true'
         shell: bash
         run: |
           set -e
-          cd "${BASE_DIR}/${{ matrix.dir }}"
-          if [ -f "${{ matrix.entry }}" ]; then
-            # Jika suatu pertemuan butuh input, bisa tambahkan:
-            # printf "input1\ninput2\n" | php "${{ matrix.entry }}"
-            php "${{ matrix.entry }}"
-          else
-            echo "Entry '${{ matrix.entry }}' tidak ditemukan di ${{ matrix.dir }}"
-            exit 1
+          BASE="${{ steps.basedir.outputs.value }}"
+          RUN_DIR="$BASE/${{ matrix.dir }}"
+          if [ ! -d "$RUN_DIR" ]; then
+            echo "Folder tidak ditemukan: $RUN_DIR"
+            exit 2
           fi
+          cd "$RUN_DIR"
+          if [ ! -f "${{ matrix.entry }}" ]; then
+            echo "Entry file tidak ditemukan: $RUN_DIR/${{ matrix.entry }}"
+            echo "Daftar file:"
+            ls -la
+            exit 3
+          fi
+          php "${{ matrix.entry }}"
 
       - name: Upload output (opsional)
         if: always() && matrix.skip != 'true'
@@ -90,5 +107,5 @@ jobs:
         with:
           name: output-${{ matrix.dir }}
           path: |
-            ${{ env.BASE_DIR }}/${{ matrix.dir }}/output*.txt
+            ${{ steps.basedir.outputs.value }}/${{ matrix.dir }}/output*.txt
           if-no-files-found: ignore
