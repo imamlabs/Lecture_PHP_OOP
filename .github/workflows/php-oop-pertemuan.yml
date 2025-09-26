@@ -37,6 +37,11 @@ jobs:
             entry: Main.php
           - dir: Pertemuan12
             entry: Main.php
+            # Input otomatis untuk menu:
+            # 1 (tambah) → NIM → Nama
+            # 1 (tambah) → NIM → Nama
+            # 3 (tampil), lalu 0 (keluar)
+            input: "1\n2310001\nAri\n1\n2310002\nNina\n3\n0\n"
           - dir: Pertemuan13
             entry: Main.php
           - dir: Pertemuan14
@@ -63,11 +68,12 @@ jobs:
         id: basedir
         run: |
           if [ -d "php-oop-multifile" ]; then
-            echo "value=php-oop-multifile" >> "$GITHUB_OUTPUT"
+            BD="php-oop-multifile"
           else
-            echo "value=." >> "$GITHUB_OUTPUT"
+            BD="."
           fi
-          echo "Using BASE_DIR=$(cat $GITHUB_OUTPUT | sed -n 's/value=//p')"
+          echo "value=$BD" >> "$GITHUB_OUTPUT"
+          echo "Using BASE_DIR=$BD"
 
       - name: Skip marker
         if: matrix.skip == 'true'
@@ -76,30 +82,36 @@ jobs:
       - name: List folder (debug)
         if: matrix.skip != 'true'
         run: |
-          echo "Workspace:"
+          echo "Workspace root:"
           ls -la
-          echo "Trying ${{ steps.basedir.outputs.value }}/${{ matrix.dir }}:"
+          echo "Listing ${{ steps.basedir.outputs.value }}/${{ matrix.dir }}:"
           ls -la "${{ steps.basedir.outputs.value }}/${{ matrix.dir }}" || true
 
-      - name: Run ${{ matrix.dir }} -> ${{ matrix.entry }}
+      - name: Run ${{ matrix.dir }} -> ${{ matrix.entry }} (with optional input)
         if: matrix.skip != 'true'
         shell: bash
         run: |
           set -e
           BASE="${{ steps.basedir.outputs.value }}"
           RUN_DIR="$BASE/${{ matrix.dir }}"
+          ENTRY="${{ matrix.entry }}"
           if [ ! -d "$RUN_DIR" ]; then
             echo "Folder tidak ditemukan: $RUN_DIR"
             exit 2
           fi
           cd "$RUN_DIR"
-          if [ ! -f "${{ matrix.entry }}" ]; then
-            echo "Entry file tidak ditemukan: $RUN_DIR/${{ matrix.entry }}"
-            echo "Daftar file:"
+          if [ ! -f "$ENTRY" ]; then
+            echo "Entry file tidak ditemukan: $RUN_DIR/$ENTRY"
             ls -la
             exit 3
           fi
-          php "${{ matrix.entry }}"
+
+          # Jika matrix.input terisi, kirim ke STDIN; kalau tidak, jalankan biasa
+          if [ -n "${{ matrix.input }}" ]; then
+            printf "%b" "${{ matrix.input }}" | php "$ENTRY"
+          else
+            php "$ENTRY"
+          fi
 
       - name: Upload output (opsional)
         if: always() && matrix.skip != 'true'
